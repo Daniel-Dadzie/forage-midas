@@ -23,35 +23,42 @@ public class TransactionListener {
     @KafkaListener(topics = "${general.kafka-topic}", groupId = "midas-core-group")
     public void listen(Transaction transaction) {
         
-        // 1. Fetch both users from the database (Direct return, no Optional wrapper)
         UserRecord sender = userRepository.findById(transaction.getSenderId());
         UserRecord recipient = userRepository.findById(transaction.getRecipientId());
 
-        // 2. Validate users exist (Standard null check)
         if (sender != null && recipient != null) {
-
-        // 3. Validate sufficient funds
-        if (sender.getBalance() >= transaction.getAmount()) {
+            if (sender.getBalance() >= transaction.getAmount()) {
                 
-                // 4. Update balances
-                sender.setBalance(sender.getBalance() - transaction.getAmount());
-                recipient.setBalance(recipient.getBalance() + transaction.getAmount());
+                // 1. Call the external Incentive API
+                org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+                com.jpmc.midascore.foundation.Incentive incentiveObj = restTemplate.postForObject(
+                        "http://localhost:8080/incentive", 
+                        transaction, 
+                        com.jpmc.midascore.foundation.Incentive.class
+                );
+                
+                // Extract the amount, default to 0 if the API fails
+                float incentiveAmount = (incentiveObj != null) ? incentiveObj.getAmount() : 0.0f;
 
-                // 5. Save updated users
+                // 2. Update balances (Incentive goes to recipient only)
+                sender.setBalance(sender.getBalance() - transaction.getAmount());
+                recipient.setBalance(recipient.getBalance() + transaction.getAmount() + incentiveAmount);
+
                 userRepository.save(sender);
                 userRepository.save(recipient);
 
-                // 6. Record the transaction
-                TransactionRecord record = new TransactionRecord(sender, recipient, transaction.getAmount());
+                // 3. Record the transaction with the new incentive parameter
+                TransactionRecord record = new TransactionRecord(sender, recipient, transaction.getAmount(), incentiveAmount);
                 transactionRecordRepository.save(record);
 
-                // Plan B: Log Waldorf's balance so we can find our answer
-                if ("waldorf".equalsIgnoreCase(sender.getName())) {
-                    System.out.println("🎯 WALDORF BALANCE: " + sender.getBalance());
+                // Plan B: Log Wilbur's balance
+                if ("wilbur".equalsIgnoreCase(sender.getName())) {
+                    System.out.println("🎯 WILBUR BALANCE: " + sender.getBalance());
                 }
-                if ("waldorf".equalsIgnoreCase(recipient.getName())) {
-                    System.out.println("🎯 WALDORF BALANCE: " + recipient.getBalance());
+                if ("wilbur".equalsIgnoreCase(recipient.getName())) {
+                    System.out.println("🎯 WILBUR BALANCE: " + recipient.getBalance());
                 }
-            }    } 
+            }
         }
+    }
     }

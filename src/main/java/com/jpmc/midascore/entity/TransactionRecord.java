@@ -18,14 +18,19 @@ public class TransactionRecord {
     private UserRecord recipient;
 
     private float amount;
+    
+    // NEW FIELD
+    private float incentive;
 
     public TransactionRecord() {
     }
 
-    public TransactionRecord(UserRecord sender, UserRecord recipient, float amount) {
+    // UPDATED CONSTRUCTOR
+    public TransactionRecord(UserRecord sender, UserRecord recipient, float amount, float incentive) {
         this.sender = sender;
         this.recipient = recipient;
         this.amount = amount;
+        this.incentive = incentive;
     }
 
     public Long getId() { return id; }
@@ -36,4 +41,8 @@ public class TransactionRecord {
     public void setRecipient(UserRecord recipient) { this.recipient = recipient; }
     public float getAmount() { return amount; }
     public void setAmount(float amount) { this.amount = amount; }
+    
+    // NEW GETTER AND SETTER
+    public float getIncentive() { return incentive; }
+    public void setIncentive(float incentive) { this.incentive = incentive; }
 }
